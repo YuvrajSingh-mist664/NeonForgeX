@@ -10,7 +10,7 @@ font = pygame.font.SysFont('Arial', 36, bold=True)
 small = pygame.font.SysFont('Arial', 24)
 
 player_x = WIDTH // 2
-player_y = HEIGHT - 260
+player_y = HEIGHT - 330
 bullets = []
 enemies = []
 stars = []
@@ -23,9 +23,9 @@ for i in range(100):
 for i in range(7):
     enemies.append([random.randint(80, WIDTH-80), random.randint(-800, -50), random.randint(3, 6)])
 
-LEFT_BTN = pygame.Rect(40, HEIGHT-130, 90, 90)
-RIGHT_BTN = pygame.Rect(150, HEIGHT-130, 90, 90)
-FIRE_BTN = pygame.Rect(WIDTH-140, HEIGHT-130, 100, 100)
+LEFT_BTN = pygame.Rect(40, HEIGHT-210, 90, 90)
+RIGHT_BTN = pygame.Rect(150, HEIGHT-210, 90, 90)
+FIRE_BTN = pygame.Rect(WIDTH-140, HEIGHT-210, 100, 100)
 
 move_left = False
 move_right = False
@@ -62,7 +62,6 @@ while running:
     if move_right and player_x < WIDTH-50:
         player_x += 12
 
-    # Fighter Jet
     pygame.draw.polygon(screen, (170,170,200), [
         (player_x, player_y-60),
         (player_x-45, player_y+45),
@@ -110,7 +109,6 @@ while running:
     screen.blit(font.render(f'SCORE: {score}', True, (255,220,0)), (20,20))
     screen.blit(font.render(f'❤ {lives}', True, (255,70,70)), (20,65))
 
-    # Controls
     pygame.draw.circle(screen, (40,120,255), LEFT_BTN.center, 45)
     pygame.draw.circle(screen, (40,120,255), RIGHT_BTN.center, 45)
     pygame.draw.circle(screen, (220,40,40), FIRE_BTN.center, 50)
