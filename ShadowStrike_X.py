@@ -45,11 +45,10 @@ while run:
             px=max(80,min(W-80,e.pos[0]))
 
     shoot+=1
-    if shoot>=8:
+    if shoot>=3:
         bullets.append([px,py-70])
         shoot=0
 
-    # Futuristic Jet
     pygame.draw.circle(screen,(0,220,255),(px,py),95,3)
     pygame.draw.polygon(screen,(120,130,170),[(px,py-95),(px-70,py+45),(px+70,py+45)])
     pygame.draw.circle(screen,(0,255,255),(px,py-20),18)
