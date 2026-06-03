@@ -3,14 +3,13 @@ import pygame
 import random
 import math
 import os
+import sys
 
 # Initialize Pygame
 pygame.init()
 
 # Screen Setup - Optimized for Android and Windows
 info = pygame.display.Info()
-# Use a standard 9:16 aspect ratio for portrait mode if possible, otherwise fullscreen
-IS_ANDROID = hasattr(pygame, 'android') or info.current_w < info.current_h
 W, H = info.current_w, info.current_h
 screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN | pygame.SCALED)
 pygame.display.set_caption("Omega City Racer - Beast Mode")
@@ -18,17 +17,34 @@ pygame.display.set_caption("Omega City Racer - Beast Mode")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont('Arial', 40, True)
 
-# Load Assets
-ASSETS_PATH = os.path.join(os.path.dirname(__file__), 'assets')
+# Load Assets - Robust path handling for Android
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+ASSETS_PATH = get_resource_path('assets')
 
 def load_image(name, scale=None):
     path = os.path.join(ASSETS_PATH, name)
+    print(f"Attempting to load: {path}")
     try:
+        if not os.path.exists(path):
+            print(f"FILE NOT FOUND: {path}")
+            raise FileNotFoundError
+            
         img = pygame.image.load(path).convert_alpha()
         if scale:
             img = pygame.transform.smoothscale(img, scale)
+        print(f"Successfully loaded: {name}")
         return img
-    except:
+    except Exception as e:
+        print(f"FAILED to load {name}: {e}")
         # Fallback to a colored surface if image fails to load
         surf = pygame.Surface(scale if scale else (50, 50))
         surf.fill((255, 0, 255))
@@ -198,8 +214,6 @@ class Game:
 
         # Draw Coins with Glow
         for c in self.coins:
-            # Simple glow effect
-            glow_size = COIN_SIZE[0] + int(math.sin(pygame.time.get_ticks() * 0.01) * 5)
             screen.blit(coin_img, (c['x'] - COIN_SIZE[0]//2, c['y'] - COIN_SIZE[1]//2))
 
         # Draw Traffic
