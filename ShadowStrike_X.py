@@ -1,166 +1,240 @@
-# ShadowStrike X Omega Plus Phase 1
-import pygame, random, math
+# ShadowStrike X Omega Plus - Beast Mode
+import pygame
+import random
+import math
+import os
+import sys
+
+# Initialize Pygame
 pygame.init()
-info=pygame.display.Info()
-W,H=info.current_w,info.current_h
-screen=pygame.display.set_mode((W,H),pygame.FULLSCREEN)
-clock=pygame.time.Clock()
-font=pygame.font.SysFont('Arial',36,True)
 
-px=W//2
-py=H-260
-bullets=[]
-enemies=[]
-enemy_bullets=[]
-explosions=[]
-powerups=[]
-stars=[]
-score=0
-lives=5
-boss_hp=0
-boss=False
-shoot=0
+# Screen Setup
+info = pygame.display.Info()
+W, H = info.current_w, info.current_h
+screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN | pygame.SCALED)
+pygame.display.set_caption("ShadowStrike X - Beast Mode")
 
-for i in range(180):
-    stars.append([random.randint(0,W),random.randint(0,H),random.randint(1,5)])
-for i in range(8):
-    enemies.append([random.randint(80,W-80),random.randint(-700,-50),random.randint(3,7),random.choice(['demon','drone','eye'])])
+clock = pygame.time.Clock()
+font = pygame.font.SysFont('Arial', 36, True)
 
-run=True
-while run:
-    screen.fill((2,2,18))
+# Load Assets
+def get_resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
-    for s in stars:
-        s[1]+=s[2]
-        if s[1]>H:
-            s[0]=random.randint(0,W)
-            s[1]=0
-        pygame.draw.circle(screen,(50,50,100),(s[0],s[1]),s[2]+3)
-        pygame.draw.circle(screen,(220,220,255),(s[0],s[1]),s[2])
+ASSETS_PATH = get_resource_path('assets')
 
-    for e in pygame.event.get():
-        if e.type==pygame.QUIT:
-            run=False
-        if e.type==pygame.MOUSEMOTION:
-            px=max(80,min(W-80,e.pos[0]))
+def load_image(name, scale=None):
+    path = os.path.join(ASSETS_PATH, name)
+    try:
+        img = pygame.image.load(path).convert_alpha()
+        if scale:
+            img = pygame.transform.smoothscale(img, scale)
+        return img
+    except:
+        surf = pygame.Surface(scale if scale else (50, 50))
+        surf.fill((255, 0, 255))
+        return surf
 
-    shoot+=1
-    if shoot>=3:
-        bullets.append([px,py-70])
-        shoot=0
+# Sprite Config
+PLAYER_SIZE = (120, 120)
+player_img = load_image('player_jet.png', PLAYER_SIZE)
 
-    pygame.draw.circle(screen,(0,220,255),(px,py),95,3)
-    pygame.draw.polygon(screen,(120,130,170),[(px,py-95),(px-70,py+45),(px+70,py+45)])
-    pygame.draw.circle(screen,(0,255,255),(px,py-20),18)
-    pygame.draw.polygon(screen,(255,170,0),[(px-18,py+45),(px-2,py+45),(px-10,py+95)])
-    pygame.draw.polygon(screen,(255,170,0),[(px+18,py+45),(px+2,py+45),(px+10,py+95)])
+# Game State
+class Game:
+    def __init__(self):
+        self.reset()
+        
+    def reset(self):
+        self.px = W // 2
+        self.py = H - 200
+        self.bullets = []
+        self.enemies = []
+        self.enemy_bullets = []
+        self.explosions = []
+        self.powerups = []
+        self.stars = []
+        self.score = 0
+        self.lives = 5
+        self.boss_hp = 0
+        self.boss = False
+        self.shoot_timer = 0
+        self.running = True
+        self.game_over = False
+        
+        for _ in range(100):
+            self.stars.append([random.randint(0, W), random.randint(0, H), random.randint(1, 5)])
+        for _ in range(8):
+            self.spawn_enemy()
 
-    for b in bullets[:]:
-        b[1]-=26
-        pygame.draw.rect(screen,(0,200,255),(b[0]-5,b[1],10,35))
-        if b[1]<0: bullets.remove(b)
+    def spawn_enemy(self):
+        self.enemies.append([
+            random.randint(80, W-80), 
+            random.randint(-700, -50), 
+            random.randint(3, 7), 
+            random.choice(['demon', 'drone', 'eye'])
+        ])
 
-    for eb in enemy_bullets[:]:
-        eb[1]+=12
-        pygame.draw.circle(screen,(255,60,0),(eb[0],eb[1]),6)
-        if math.hypot(px-eb[0],py-eb[1])<40:
-            lives-=1
-            enemy_bullets.remove(eb)
-        elif eb[1]>H:
-            enemy_bullets.remove(eb)
+    def handle_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            if event.type in [pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN]:
+                self.px = max(80, min(W-80, event.pos[0]))
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.running = False
+                if self.game_over and event.key == pygame.K_SPACE:
+                    self.reset()
 
-    if score>=300 and not boss:
-        boss=True
-        boss_hp=50
-        bx=W//2
-        by=150
+    def update(self):
+        if self.game_over:
+            return
 
-    if boss:
-        pygame.draw.circle(screen,(120,0,0),(bx,by),90)
-        pygame.draw.circle(screen,(255,0,50),(bx,by),70)
-        pygame.draw.circle(screen,(255,255,0),(bx-30,by-20),14)
-        pygame.draw.circle(screen,(255,255,0),(bx+30,by-20),14)
-        pygame.draw.rect(screen,(80,80,80),(W//2-150,20,300,20))
-        pygame.draw.rect(screen,(255,0,0),(W//2-150,20,boss_hp*6,20))
+        # Stars
+        for s in self.stars:
+            s[1] += s[2]
+            if s[1] > H:
+                s[0] = random.randint(0, W)
+                s[1] = 0
 
-        if random.randint(1,25)==1:
-            enemy_bullets.append([bx,by])
+        # Shooting
+        self.shoot_timer += 1
+        if self.shoot_timer >= 5:
+            self.bullets.append([self.px, self.py - 50])
+            self.shoot_timer = 0
 
-        for b in bullets[:]:
-            if math.hypot(b[0]-bx,b[1]-by)<90:
-                boss_hp-=1
-                bullets.remove(b)
-                explosions.append([bx,by,20])
+        # Bullets
+        for b in self.bullets[:]:
+            b[1] -= 20
+            if b[1] < 0: self.bullets.remove(b)
 
-        if boss_hp<=0:
-            boss=False
-            score+=200
+        # Enemy Bullets
+        for eb in self.enemy_bullets[:]:
+            eb[1] += 10
+            if math.hypot(self.px - eb[0], self.py - eb[1]) < 50:
+                self.lives -= 1
+                self.enemy_bullets.remove(eb)
+                if self.lives <= 0: self.game_over = True
+            elif eb[1] > H:
+                self.enemy_bullets.remove(eb)
 
-    for en in enemies:
-        en[1]+=en[2]
-        if random.randint(1,90)==1:
-            enemy_bullets.append([en[0],en[1]])
-        if en[1]>H:
-            en[0]=random.randint(80,W-80)
-            en[1]=random.randint(-500,-50)
-            lives-=1
+        # Boss Logic
+        if self.score >= 500 and not self.boss:
+            self.boss = True
+            self.boss_hp = 100
+            self.bx, self.by = W // 2, 150
 
-        if en[3]=='demon':
-            pygame.draw.circle(screen,(255,0,50),(en[0],en[1]),40)
-        elif en[3]=='drone':
-            pygame.draw.rect(screen,(0,255,120),(en[0]-25,en[1]-25,50,50))
-        else:
-            pygame.draw.circle(screen,(180,0,255),(en[0],en[1]),35)
-            pygame.draw.circle(screen,(255,255,255),(en[0],en[1]),12)
+        if self.boss:
+            if random.randint(1, 20) == 1:
+                self.enemy_bullets.append([self.bx, self.by])
+            for b in self.bullets[:]:
+                if math.hypot(b[0] - self.bx, b[1] - self.by) < 90:
+                    self.boss_hp -= 1
+                    self.bullets.remove(b)
+                    self.explosions.append([self.bx, self.by, 20])
+            if self.boss_hp <= 0:
+                self.boss = False
+                self.score += 500
 
-        if math.hypot(px-en[0],py-en[1])<60:
-            lives-=1
-            en[0]=random.randint(80,W-80)
-            en[1]=random.randint(-500,-50)
+        # Enemies
+        for en in self.enemies:
+            en[1] += en[2]
+            if random.randint(1, 60) == 1:
+                self.enemy_bullets.append([en[0], en[1]])
+            
+            if en[1] > H:
+                en[0] = random.randint(80, W-80)
+                en[1] = random.randint(-500, -50)
+                self.lives -= 1
+                if self.lives <= 0: self.game_over = True
 
-        for b in bullets[:]:
-            if math.hypot(b[0]-en[0],b[1]-en[1])<45:
-                score+=10
-                explosions.append([en[0],en[1],25])
-                if random.randint(1,6)==1:
-                    powerups.append([en[0],en[1],'life'])
-                en[0]=random.randint(80,W-80)
-                en[1]=random.randint(-500,-50)
-                bullets.remove(b)
-                break
+            if math.hypot(self.px - en[0], self.py - en[1]) < 60:
+                self.lives -= 1
+                en[1] = -500
+                if self.lives <= 0: self.game_over = True
 
-    for ex in explosions[:]:
-        pygame.draw.circle(screen,(255,120,0),(ex[0],ex[1]),ex[2])
-        ex[2]+=3
-        if ex[2]>50:
-            explosions.remove(ex)
+            for b in self.bullets[:]:
+                if math.hypot(b[0] - en[0], b[1] - en[1]) < 45:
+                    self.score += 10
+                    self.explosions.append([en[0], en[1], 25])
+                    en[1] = -500
+                    self.bullets.remove(b)
+                    break
 
-    for p in powerups[:]:
-        p[1]+=5
-        pygame.draw.circle(screen,(0,255,0),(p[0],p[1]),15)
-        if math.hypot(px-p[0],py-p[1])<45:
-            if p[2]=='life' and lives<5:
-                lives+=1
-            powerups.remove(p)
+        # Explosions
+        for ex in self.explosions[:]:
+            ex[2] += 2
+            if ex[2] > 50: self.explosions.remove(ex)
 
-    hud=pygame.Surface((340,110),pygame.SRCALPHA)
-    hud.fill((0,0,0,140))
-    screen.blit(hud,(10,10))
-    pygame.draw.rect(screen,(0,255,255),(10,10,340,110),3,border_radius=18)
-    screen.blit(font.render(f'SCORE {score}',True,(0,255,255)),(25,20))
+    def draw(self):
+        screen.fill((5, 5, 20))
+        
+        # Stars
+        for s in self.stars:
+            pygame.draw.circle(screen, (200, 200, 255), (s[0], s[1]), s[2] // 2)
 
-    for i in range(lives):
-        pygame.draw.circle(screen,(255,40,80),(45+i*40,90),13)
-        pygame.draw.circle(screen,(255,90,130),(55+i*40,90),13)
-        pygame.draw.polygon(screen,(255,60,90),[(36+i*40,95),(64+i*40,95),(50+i*40,115)])
+        # Player
+        # Rotate player image for "core" effect
+        angle = (pygame.time.get_ticks() // 10) % 360
+        rotated_player = pygame.transform.rotate(player_img, angle)
+        rect = rotated_player.get_rect(center=(self.px, self.py))
+        screen.blit(rotated_player, rect.topleft)
+        
+        # Core Glow
+        glow_surf = pygame.Surface((150, 150), pygame.SRCALPHA)
+        glow_val = int(127 + 127 * math.sin(pygame.time.get_ticks() * 0.01))
+        pygame.draw.circle(glow_surf, (0, 255, 255, glow_val // 4), (75, 75), 70)
+        screen.blit(glow_surf, (self.px - 75, self.py - 75))
 
-    if lives<=0:
-        txt=font.render('GAME OVER',True,(255,0,0))
-        screen.blit(txt,(W//2-120,H//2))
+        # Bullets
+        for b in self.bullets:
+            pygame.draw.rect(screen, (0, 255, 255), (b[0]-3, b[1], 6, 20))
+
+        # Enemy Bullets
+        for eb in self.enemy_bullets:
+            pygame.draw.circle(screen, (255, 50, 50), (eb[0], eb[1]), 6)
+
+        # Enemies
+        for en in self.enemies:
+            if en[3] == 'demon':
+                pygame.draw.circle(screen, (255, 0, 50), (en[0], en[1]), 35)
+            elif en[3] == 'drone':
+                pygame.draw.rect(screen, (0, 255, 150), (en[0]-25, en[1]-25, 50, 50))
+            else:
+                pygame.draw.circle(screen, (150, 0, 255), (en[0], en[1]), 30)
+
+        # Boss
+        if self.boss:
+            pygame.draw.circle(screen, (255, 0, 0), (self.bx, self.by), 80, 5)
+            pygame.draw.rect(screen, (255, 0, 0), (W//2 - 100, 20, self.boss_hp * 2, 15))
+
+        # Explosions
+        for ex in self.explosions:
+            pygame.draw.circle(screen, (255, 150, 0), (ex[0], ex[1]), ex[2], 2)
+
+        # HUD
+        hud_txt = font.render(f"SCORE: {self.score}  LIVES: {self.lives}", True, (0, 255, 255))
+        screen.blit(hud_txt, (20, 20))
+
+        if self.game_over:
+            overlay = pygame.Surface((W, H), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 200))
+            screen.blit(overlay, (0, 0))
+            msg = font.render("MISSION FAILED", True, (255, 0, 0))
+            screen.blit(msg, (W//2 - msg.get_width()//2, H//2))
+            if pygame.mouse.get_pressed()[0]: self.reset()
+
         pygame.display.flip()
-        pygame.time.delay(3000)
-        run=False
 
-    pygame.display.flip()
+# Main
+game = Game()
+while game.running:
+    game.handle_input()
+    game.update()
+    game.draw()
     clock.tick(60)
 pygame.quit()
