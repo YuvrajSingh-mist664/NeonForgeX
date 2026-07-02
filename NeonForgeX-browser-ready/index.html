@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonForgeX</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="game-shell" aria-label="NeonForgeX browser game">
+        <canvas id="gameCanvas"></canvas>
+
+        <section id="startPanel" class="panel">
+            <p class="eyebrow">NeonForgeX</p>
+            <h1>Shadow Grid</h1>
+            <button id="startButton" type="button">Start</button>
+        </section>
+
+        <section id="gameOverPanel" class="panel is-hidden">
+            <p class="eyebrow">Mission Ended</p>
+            <h2 id="finalScore">Score 0</h2>
+            <button id="restartButton" type="button">Restart</button>
+        </section>
+
+        <div class="hud" aria-live="polite">
+            <span id="scoreLabel">Score 0</span>
+            <span id="healthLabel">Hull 100</span>
+            <span id="waveLabel">Wave 1</span>
+            <span id="bestLabel">Best 0</span>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
